@@ -1,13 +1,13 @@
 /*
  * Copyright 2014-2015 Amazon.com, Inc. or its affiliates. All Rights Reserved.
- * 
+ *
  * Licensed under the Amazon Software License (the "License"). You may not use this file except in compliance with the License.
  * A copy of the License is located at
- * 
+ *
  * http://aws.amazon.com/asl/
- * 
+ *
  * or in the "LICENSE.txt" file accompanying this file.
- * 
+ *
  * This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
  * See the License for the specific language governing permissions and limitations under the License.
  */
@@ -90,6 +90,9 @@ public class DynamoDBReplicationEmitter implements IEmitter<Record> {
      * AmazonCloudWatch for emitting metrics.
      */
     private static final AtomicReference<AmazonCloudWatchAsync> CLOUDWATCH = new AtomicReference<AmazonCloudWatchAsync>();
+
+    private static final boolean CLOUD_WATCH_ENABLED = false;
+
     /**
      * Asynchronous DynamoDB client for writing to the DynamoDB table.
      */
@@ -301,7 +304,8 @@ public class DynamoDBReplicationEmitter implements IEmitter<Record> {
                 Thread.currentThread().interrupt();
             }
         }
-        emitCloudWatchMetrics(records, failedRecords, retryCount);
+        if (CLOUD_WATCH_ENABLED)
+            emitCloudWatchMetrics(records, failedRecords, retryCount);
         if (!records.isEmpty()) {
             log.debug("Successfully emitted " + (records.size() - failedRecords.size()) + " records ending with sequence number "
                 + buffer.getLastSequenceNumber());
