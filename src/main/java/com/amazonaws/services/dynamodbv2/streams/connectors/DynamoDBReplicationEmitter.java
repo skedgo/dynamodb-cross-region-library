@@ -43,17 +43,7 @@ import com.amazonaws.services.cloudwatch.model.PutMetricDataResult;
 import com.amazonaws.services.cloudwatch.model.StandardUnit;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsync;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClient;
-import com.amazonaws.services.dynamodbv2.model.DeleteItemRequest;
-import com.amazonaws.services.dynamodbv2.model.DeleteItemResult;
-import com.amazonaws.services.dynamodbv2.model.InternalServerErrorException;
-import com.amazonaws.services.dynamodbv2.model.ItemCollectionSizeLimitExceededException;
-import com.amazonaws.services.dynamodbv2.model.OperationType;
-import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughputExceededException;
-import com.amazonaws.services.dynamodbv2.model.PutItemRequest;
-import com.amazonaws.services.dynamodbv2.model.PutItemResult;
-import com.amazonaws.services.dynamodbv2.model.Record;
-import com.amazonaws.services.dynamodbv2.model.UpdateItemRequest;
-import com.amazonaws.services.dynamodbv2.model.UpdateItemResult;
+import com.amazonaws.services.dynamodbv2.model.*;
 import com.amazonaws.services.kinesis.connectors.UnmodifiableBuffer;
 import com.amazonaws.services.kinesis.connectors.interfaces.IEmitter;
 
@@ -101,6 +91,12 @@ public class DynamoDBReplicationEmitter implements IEmitter<Record> {
      * Maximum number of threads for the Async clients.
      */
     public static final int MAX_THREADS = 1000;
+
+    /**
+     * Transaction table suffix
+     */
+    private static final String TRANSACTIONS_SUFFIX = "-Transactions";
+
     /**
      * The DynamoDB endpoint.
      */
@@ -375,9 +371,33 @@ public class DynamoDBReplicationEmitter implements IEmitter<Record> {
             @Override
             public void onSuccess(AmazonWebServiceRequest request, Object result) {
                 log.trace("Record emitted successfully: " + record.getDynamodb().getSequenceNumber());
+                getDynamodb().putItemAsync(createTransactionRequest(record), new AsyncHandler<PutItemRequest, PutItemResult>() {
+                    @Override
+                    public void onError(Exception e) {
+                        log.debug("Error saving transaction", e);
+                    }
+
+                    @Override
+                    public void onSuccess(PutItemRequest request, PutItemResult putItemResult) {
+                    }
+                });
                 doneSignal.countDown();
             }
         };
+    }
+
+    private PutItemRequest createTransactionRequest(Record record) {
+        PutItemRequest putItemRequest = new PutItemRequest();
+        StreamRecord dynamodb = record.getDynamodb();
+        putItemRequest.setTableName(getTableName() + TRANSACTIONS_SUFFIX);
+        putItemRequest.addItemEntry("Id", new AttributeValue().withN(dynamodb.getSequenceNumber()));
+        putItemRequest.addItemEntry("timestamp", new AttributeValue().withN(""+ dynamodb.getApproximateCreationDateTime().getTime()));
+        putItemRequest.addItemEntry("origin", new AttributeValue().withS(record.getAwsRegion()));
+        if (dynamodb.getNewImage() != null)
+            putItemRequest.addItemEntry("new", new AttributeValue().withM(dynamodb.getNewImage()));
+        if (dynamodb.getOldImage() != null)
+            putItemRequest.addItemEntry("old", new AttributeValue().withM(dynamodb.getOldImage()));
+        return putItemRequest;
     }
 
     /**
