@@ -167,7 +167,7 @@ public class CommandLineInterface {
 
         // obtain the Stream ID associated with the source table
         final String streamArn = dynamodbClient.describeTable(sourceTable).getTable().getLatestStreamArn();
-        final boolean streamEnabled = true;//DynamoDBConnectorUtilities.isStreamsEnabled(streamsClient, streamArn, DynamoDBConnectorConstants.NEW_AND_OLD);
+        final boolean streamEnabled = DynamoDBConnectorUtilities.isStreamsEnabled(streamsClient, streamArn, DynamoDBConnectorConstants.NEW_AND_OLD);
         Preconditions.checkArgument(streamArn != null, DynamoDBConnectorConstants.MSG_NO_STREAMS_FOUND);
         Preconditions.checkState(streamEnabled, DynamoDBConnectorConstants.STREAM_NOT_READY);
 
