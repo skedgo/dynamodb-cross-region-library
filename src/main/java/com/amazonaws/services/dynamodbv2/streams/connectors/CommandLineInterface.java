@@ -118,7 +118,7 @@ public class CommandLineInterface {
 
         // set the source dynamodb endpoint
         sourceDynamodbEndpoint = Optional.fromNullable(params.getSourceEndpoint());
-        sourceDynamodbStreamsEndpoint = Optional.fromNullable(params.getSourceEndpoint());
+        sourceDynamodbStreamsEndpoint = Optional.fromNullable(params.getSourceStreamsEndpoint());
 
         // get source table name
         sourceTable = params.getSourceTable();
